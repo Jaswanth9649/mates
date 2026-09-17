@@ -21,37 +21,85 @@ import type { Person } from "@/lib/mock-data";
 
 const CATEGORIES = ["General", "Food", "Travel", "Lodging", "Utilities", "Rent", "Fun"];
 
+export type ExpenseFormInitialValues = {
+  expenseId: string;
+  description: string;
+  amountCents: number;
+  category: string;
+  expenseDate: string;
+  paidBy: string;
+  splitType: "equal" | "exact" | "percentage";
+  splits: { userId: string; amountCents: number }[];
+};
+
 export function ExpenseForm({
   groupId,
   members,
   currency = "USD",
   defaultPaidBy,
+  initial,
 }: {
   groupId: string;
   members: Person[];
   currency?: string;
   defaultPaidBy: string;
+  initial?: ExpenseFormInitialValues;
 }) {
   const router = useRouter();
-  const [description, setDescription] = React.useState("");
-  const [amount, setAmount] = React.useState("");
-  const [category, setCategory] = React.useState(CATEGORIES[0]);
-  const [paidBy, setPaidBy] = React.useState(defaultPaidBy);
+  const [description, setDescription] = React.useState(initial?.description ?? "");
+  const [amount, setAmount] = React.useState(
+    initial ? (initial.amountCents / 100).toFixed(2) : ""
+  );
+  const [category, setCategory] = React.useState(initial?.category ?? CATEGORIES[0]);
+  const [paidBy, setPaidBy] = React.useState(initial?.paidBy ?? defaultPaidBy);
   const [date, setDate] = React.useState(
-    () => new Date().toISOString().slice(0, 10)
+    initial?.expenseDate ?? (() => new Date().toISOString().slice(0, 10))()
   );
   const [splitValue, setSplitValue] = React.useState<SplitEditorValue | null>(null);
+  const [submitting, setSubmitting] = React.useState(false);
 
   const totalCents = dollarsToCents(amount || "0");
   const canSubmit =
     description.trim().length > 0 && totalCents > 0 && !!splitValue?.valid;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!canSubmit) return;
-    // TODO: POST /api/expenses once the database layer is wired up.
-    toast.success(`"${description}" added (mock) — ${splitValue!.splits.length} way split`);
-    router.push(`/groups/${groupId}`);
+    if (!canSubmit || !splitValue) return;
+    setSubmitting(true);
+
+    const payload = {
+      description,
+      amountCents: totalCents,
+      currency,
+      category,
+      expenseDate: date,
+      paidBy,
+      splitType: splitValue.splitType,
+      splits: splitValue.splits,
+    };
+
+    try {
+      const res = await fetch(
+        initial ? `/api/expenses/${initial.expenseId}` : "/api/expenses",
+        {
+          method: initial ? "PATCH" : "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(initial ? payload : { ...payload, groupId }),
+        }
+      );
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw new Error(body?.error ? JSON.stringify(body.error) : "Request failed");
+      }
+
+      toast.success(`"${description}" ${initial ? "updated" : "added"}`);
+      router.push(`/groups/${groupId}`);
+      router.refresh();
+    } catch {
+      toast.error("Couldn't save that expense — try again");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -150,6 +198,11 @@ export function ExpenseForm({
             totalCents={totalCents}
             currency={currency}
             onChange={setSplitValue}
+            initial={
+              initial
+                ? { splitType: initial.splitType, splits: initial.splits }
+                : undefined
+            }
           />
         </CardContent>
       </Card>
@@ -162,8 +215,8 @@ export function ExpenseForm({
         >
           Cancel
         </Button>
-        <Button type="submit" disabled={!canSubmit}>
-          Add expense
+        <Button type="submit" disabled={!canSubmit || submitting}>
+          {submitting ? "Saving…" : initial ? "Save changes" : "Add expense"}
         </Button>
       </div>
     </form>

@@ -3,9 +3,8 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { formatCurrency, initials } from "@/lib/format";
-import type { Person } from "@/lib/mock-data";
 
-type BalanceRow = { counterpart: Person; netCents: number };
+type BalanceRow = { counterpart: { id: string; name: string }; netCents: number };
 
 export function BalanceSummary({
   items,

@@ -10,6 +10,8 @@ import { BalanceSummary } from "@/components/balances/balance-summary";
 import { initials } from "@/lib/format";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { isGroupMember, getGroupById, getGroupMembers } from "@/lib/db/queries/groups";
+import { getGroupActivityForUser } from "@/lib/db/queries/expenses";
+import { computeGroupBalances } from "@/lib/db/queries/balances";
 
 export default async function GroupDetailPage({
   params,
@@ -27,7 +29,11 @@ export default async function GroupDetailPage({
   const isMember = await isGroupMember(groupId, user.id);
   if (!isMember) notFound();
 
-  const members = await getGroupMembers(groupId);
+  const [members, activity, balances] = await Promise.all([
+    getGroupMembers(groupId),
+    getGroupActivityForUser(groupId, user.id),
+    computeGroupBalances(groupId, user.id),
+  ]);
   const memberLabels = members.map((m) => ({
     id: m.id,
     label: m.user?.displayName ?? m.invitedEmail ?? "Pending",
@@ -103,10 +109,19 @@ export default async function GroupDetailPage({
           <TabsTrigger value="balances">Balances</TabsTrigger>
         </TabsList>
         <TabsContent value="activity" className="mt-4">
-          <ActivityFeed items={[]} />
+          <ActivityFeed
+            items={activity}
+            getHref={(item) =>
+              item.kind === "expense" ? `/groups/${groupId}/expenses/${item.id}` : undefined
+            }
+          />
         </TabsContent>
         <TabsContent value="balances" className="mt-4">
-          <BalanceSummary items={[]} currency={group.currency} />
+          <BalanceSummary
+            items={balances}
+            currency={group.currency}
+            settleHref={() => `/groups/${groupId}/settle`}
+          />
         </TabsContent>
       </Tabs>
     </div>

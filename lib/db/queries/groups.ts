@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 
 import { getDb } from "@/lib/db";
 import { groupMembers, groups, users } from "@/lib/db/schema";
@@ -82,6 +82,17 @@ export async function isGroupAdmin(groupId: string, userId: string) {
     )
     .limit(1);
   return !!row;
+}
+
+export async function areAllGroupMembers(groupId: string, userIds: string[]) {
+  if (userIds.length === 0) return true;
+  const db = getDb();
+  const rows = await db
+    .select({ userId: groupMembers.userId })
+    .from(groupMembers)
+    .where(and(eq(groupMembers.groupId, groupId), inArray(groupMembers.userId, userIds)));
+  const found = new Set(rows.map((r) => r.userId));
+  return userIds.every((id) => found.has(id));
 }
 
 export async function inviteMemberByEmail(groupId: string, email: string) {

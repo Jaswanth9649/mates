@@ -17,30 +17,49 @@ export type SplitEditorValue = {
   valid: boolean;
 };
 
+export type SplitEditorInitial = {
+  splitType: "equal" | "exact" | "percentage";
+  splits: { userId: string; amountCents: number }[];
+};
+
 export function SplitEditor({
   members,
   totalCents,
   currency = "USD",
   onChange,
+  initial,
 }: {
   members: Person[];
   totalCents: number;
   currency?: string;
   onChange?: (value: SplitEditorValue) => void;
+  initial?: SplitEditorInitial;
 }) {
   const [splitType, setSplitType] = React.useState<
     "equal" | "exact" | "percentage"
-  >("equal");
-  const [participantIds, setParticipantIds] = React.useState<Set<string>>(
-    () => new Set(members.map((m) => m.id))
+  >(initial?.splitType ?? "equal");
+  const [participantIds, setParticipantIds] = React.useState<Set<string>>(() =>
+    initial
+      ? new Set(initial.splits.map((s) => s.userId))
+      : new Set(members.map((m) => m.id))
   );
-  const [exactInputs, setExactInputs] = React.useState<Record<string, string>>({});
-  const [percentInputs, setPercentInputs] = React.useState<Record<string, string>>(
-    () =>
-      Object.fromEntries(
-        members.map((m) => [m.id, (100 / members.length).toFixed(1)])
-      )
+  const [exactInputs, setExactInputs] = React.useState<Record<string, string>>(() =>
+    initial
+      ? Object.fromEntries(
+          initial.splits.map((s) => [s.userId, (s.amountCents / 100).toFixed(2)])
+        )
+      : {}
   );
+  const [percentInputs, setPercentInputs] = React.useState<Record<string, string>>(() => {
+    if (initial && initial.splitType === "percentage" && totalCents > 0) {
+      return Object.fromEntries(
+        initial.splits.map((s) => [s.userId, ((s.amountCents / totalCents) * 100).toFixed(1)])
+      );
+    }
+    return Object.fromEntries(
+      members.map((m) => [m.id, (100 / members.length).toFixed(1)])
+    );
+  });
 
   const toggleParticipant = (id: string) => {
     setParticipantIds((prev) => {
