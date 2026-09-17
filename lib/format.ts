@@ -1,6 +1,8 @@
+import { localeForCurrency } from "@/lib/currencies";
+
 export function formatCurrency(cents: number, currency = "USD") {
   const value = Math.abs(cents) / 100;
-  const formatted = new Intl.NumberFormat("en-US", {
+  const formatted = new Intl.NumberFormat(localeForCurrency(currency), {
     style: "currency",
     currency,
   }).format(value);

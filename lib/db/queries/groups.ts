@@ -43,6 +43,19 @@ export async function getGroupById(groupId: string) {
   return group ?? null;
 }
 
+export async function updateGroup(
+  groupId: string,
+  changes: { name?: string; currency?: string }
+) {
+  const db = getDb();
+  const [group] = await db
+    .update(groups)
+    .set({ ...changes, updatedAt: new Date() })
+    .where(eq(groups.id, groupId))
+    .returning();
+  return group;
+}
+
 export async function getGroupMembers(groupId: string) {
   const db = getDb();
   return db

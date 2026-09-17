@@ -8,12 +8,21 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { SUPPORTED_CURRENCIES, type CurrencyCode } from "@/lib/currencies";
 
 export default function NewGroupPage() {
   const router = useRouter();
   const [name, setName] = React.useState("");
+  const [currency, setCurrency] = React.useState<CurrencyCode>("USD");
   const [emailInput, setEmailInput] = React.useState("");
   const [invitees, setInvitees] = React.useState<string[]>([]);
   const [submitting, setSubmitting] = React.useState(false);
@@ -33,7 +42,7 @@ export default function NewGroupPage() {
       const res = await fetch("/api/groups", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, currency: "USD" }),
+        body: JSON.stringify({ name, currency }),
       });
       if (!res.ok) throw new Error("Failed to create group");
       const { group } = await res.json();
@@ -74,6 +83,30 @@ export default function NewGroupPage() {
                 onChange={(e) => setName(e.target.value)}
                 required
               />
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <Label>Currency</Label>
+              <Select
+                value={currency}
+                onValueChange={(value) => setCurrency((value as CurrencyCode) ?? "USD")}
+              >
+                <SelectTrigger>
+                  <SelectValue>
+                    {(value: CurrencyCode) => {
+                      const c = SUPPORTED_CURRENCIES.find((c) => c.code === value);
+                      return c ? `${c.symbol} ${c.code} — ${c.label}` : value;
+                    }}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {SUPPORTED_CURRENCIES.map((c) => (
+                    <SelectItem key={c.code} value={c.code}>
+                      {c.symbol} {c.code} — {c.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="flex flex-col gap-2">
