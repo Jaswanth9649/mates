@@ -1,9 +1,11 @@
 import { BalanceSummary } from "@/components/balances/balance-summary";
+import { getCurrentUser } from "@/lib/auth/current-user";
+import { computeAllBalancesForUser } from "@/lib/db/queries/balances";
 
-export default function FriendsPage() {
-  // Cross-group balance aggregation depends on the expense system (Phase 2)
-  // and dedicated Friends aggregation (Phase 3) — until then this is
-  // correctly empty rather than showing fabricated relationships.
+export default async function FriendsPage() {
+  const user = await getCurrentUser();
+  const balances = user ? await computeAllBalancesForUser(user.id) : [];
+
   return (
     <div className="flex flex-col gap-6">
       <div>
@@ -13,7 +15,7 @@ export default function FriendsPage() {
         </p>
       </div>
 
-      <BalanceSummary items={[]} />
+      <BalanceSummary items={balances} />
     </div>
   );
 }

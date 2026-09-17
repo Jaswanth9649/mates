@@ -11,7 +11,9 @@ import { initials } from "@/lib/format";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { isGroupMember, getGroupById, getGroupMembers } from "@/lib/db/queries/groups";
 import { getGroupActivityForUser } from "@/lib/db/queries/expenses";
+import { getGroupSettlementsForActivity } from "@/lib/db/queries/settlements";
 import { computeGroupBalances } from "@/lib/db/queries/balances";
+import type { ActivityItem } from "@/lib/activity";
 
 export default async function GroupDetailPage({
   params,
@@ -29,11 +31,15 @@ export default async function GroupDetailPage({
   const isMember = await isGroupMember(groupId, user.id);
   if (!isMember) notFound();
 
-  const [members, activity, balances] = await Promise.all([
+  const [members, expenseActivity, settlementActivity, balances] = await Promise.all([
     getGroupMembers(groupId),
     getGroupActivityForUser(groupId, user.id),
+    getGroupSettlementsForActivity(groupId),
     computeGroupBalances(groupId, user.id),
   ]);
+  const activity: ActivityItem[] = [...expenseActivity, ...settlementActivity].sort(
+    (a, b) => b.date.localeCompare(a.date)
+  );
   const memberLabels = members.map((m) => ({
     id: m.id,
     label: m.user?.displayName ?? m.invitedEmail ?? "Pending",

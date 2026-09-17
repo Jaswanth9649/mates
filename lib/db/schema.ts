@@ -107,3 +107,28 @@ export const expenseSplits = pgTable("expense_splits", {
 
 export type ExpenseSplit = typeof expenseSplits.$inferSelect;
 export type NewExpenseSplit = typeof expenseSplits.$inferInsert;
+
+export const settlements = pgTable("settlements", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  groupId: uuid("group_id")
+    .notNull()
+    .references(() => groups.id, { onDelete: "cascade" }),
+  paidBy: uuid("paid_by")
+    .notNull()
+    .references(() => users.id),
+  paidTo: uuid("paid_to")
+    .notNull()
+    .references(() => users.id),
+  amountCents: integer("amount_cents").notNull(),
+  currency: text("currency").notNull().default("USD"),
+  note: text("note"),
+  settledAt: timestamp("settled_at", { withTimezone: true }).notNull().defaultNow(),
+  createdBy: uuid("created_by")
+    .notNull()
+    .references(() => users.id),
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type Settlement = typeof settlements.$inferSelect;
+export type NewSettlement = typeof settlements.$inferInsert;

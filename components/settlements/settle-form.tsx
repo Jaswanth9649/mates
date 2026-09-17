@@ -16,18 +16,21 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/format";
-import type { Person } from "@/lib/mock-data";
+import { dollarsToCents } from "@/lib/splits";
+import { SUPPORTED_CURRENCIES } from "@/lib/currencies";
 
-type BalanceRow = { counterpart: Person; netCents: number };
+type BalanceRow = { counterpart: { id: string; name: string }; netCents: number };
 
 export function SettleForm({
   groupId,
   balances,
   currency = "USD",
+  currentUserId,
 }: {
   groupId: string;
   balances: BalanceRow[];
   currency?: string;
+  currentUserId: string;
 }) {
   const router = useRouter();
   const [counterpartId, setCounterpartId] = React.useState(
@@ -38,6 +41,7 @@ export function SettleForm({
     selected ? (Math.abs(selected.netCents) / 100).toFixed(2) : ""
   );
   const [note, setNote] = React.useState("");
+  const [submitting, setSubmitting] = React.useState(false);
 
   // Reset the prefilled amount when the counterpart changes, without an
   // effect: adjust state during render per the React docs pattern.
@@ -56,16 +60,48 @@ export function SettleForm({
   }
 
   const youOwe = selected ? selected.netCents < 0 : false;
+  const currencySymbol =
+    SUPPORTED_CURRENCIES.find((c) => c.code === currency)?.symbol ?? currency;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: POST /api/settlements once the database layer is wired up.
-    toast.success(
-      `Recorded ${formatCurrency(Number(amount) * 100, currency)} ${
-        youOwe ? "to" : "from"
-      } ${selected?.counterpart.name} (mock)`
-    );
-    router.push(`/groups/${groupId}`);
+    if (!selected) return;
+    setSubmitting(true);
+
+    const amountCents = dollarsToCents(amount);
+    const paidBy = youOwe ? currentUserId : selected.counterpart.id;
+    const paidTo = youOwe ? selected.counterpart.id : currentUserId;
+
+    try {
+      const res = await fetch("/api/settlements", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          groupId,
+          paidBy,
+          paidTo,
+          amountCents,
+          currency,
+          note: note.trim() || undefined,
+        }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw new Error(body?.error ? JSON.stringify(body.error) : "Request failed");
+      }
+
+      toast.success(
+        `Recorded ${formatCurrency(amountCents, currency)} ${
+          youOwe ? "to" : "from"
+        } ${selected.counterpart.name}`
+      );
+      router.push(`/groups/${groupId}`);
+      router.refresh();
+    } catch {
+      toast.error("Couldn't record that settlement — try again");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -102,7 +138,7 @@ export function SettleForm({
             <Label htmlFor="settle-amount">Amount</Label>
             <div className="relative">
               <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                $
+                {currencySymbol}
               </span>
               <Input
                 id="settle-amount"
@@ -139,8 +175,8 @@ export function SettleForm({
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={!amount || Number(amount) <= 0}>
-              Record settlement
+            <Button type="submit" disabled={!amount || Number(amount) <= 0 || submitting}>
+              {submitting ? "Recording…" : "Record settlement"}
             </Button>
           </div>
         </form>
