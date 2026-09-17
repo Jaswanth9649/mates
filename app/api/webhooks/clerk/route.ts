@@ -5,6 +5,7 @@ import type { WebhookEvent } from "@clerk/nextjs/server";
 import { getDb } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
+import { resolvePendingInvites } from "@/lib/db/queries/groups";
 
 export async function POST(req: Request) {
   const webhookSecret = process.env.CLERK_WEBHOOK_SECRET;
@@ -70,12 +71,17 @@ export async function POST(req: Request) {
         })
         .where(eq(users.clerkUserId, id));
     } else {
-      await db.insert(users).values({
-        clerkUserId: id,
-        email: primaryEmail,
-        displayName,
-        avatarUrl: image_url ?? null,
-      });
+      const [newUser] = await db
+        .insert(users)
+        .values({
+          clerkUserId: id,
+          email: primaryEmail,
+          displayName,
+          avatarUrl: image_url ?? null,
+        })
+        .returning();
+
+      await resolvePendingInvites(newUser.id, primaryEmail);
     }
   }
 

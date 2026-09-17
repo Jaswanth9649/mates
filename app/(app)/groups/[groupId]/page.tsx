@@ -8,13 +8,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ActivityFeed } from "@/components/activity/activity-feed";
 import { BalanceSummary } from "@/components/balances/balance-summary";
 import { initials } from "@/lib/format";
-import {
-  CURRENT_USER_ID,
-  computeBalances,
-  getGroup,
-  getGroupActivity,
-  getGroupMembers,
-} from "@/lib/mock-data";
+import { getCurrentUser } from "@/lib/auth/current-user";
+import { isGroupMember, getGroupById, getGroupMembers } from "@/lib/db/queries/groups";
 
 export default async function GroupDetailPage({
   params,
@@ -22,12 +17,21 @@ export default async function GroupDetailPage({
   params: Promise<{ groupId: string }>;
 }) {
   const { groupId } = await params;
-  const group = getGroup(groupId);
+
+  const user = await getCurrentUser();
+  if (!user) notFound();
+
+  const group = await getGroupById(groupId);
   if (!group) notFound();
 
-  const members = getGroupMembers(groupId);
-  const activity = getGroupActivity(groupId);
-  const balances = computeBalances({ forUserId: CURRENT_USER_ID, groupId });
+  const isMember = await isGroupMember(groupId, user.id);
+  if (!isMember) notFound();
+
+  const members = await getGroupMembers(groupId);
+  const memberLabels = members.map((m) => ({
+    id: m.id,
+    label: m.user?.displayName ?? m.invitedEmail ?? "Pending",
+  }));
 
   return (
     <div className="flex flex-col gap-6">
@@ -36,10 +40,10 @@ export default async function GroupDetailPage({
           <h1 className="text-2xl font-semibold tracking-tight">{group.name}</h1>
           <div className="mt-2 flex items-center gap-2">
             <div className="flex -space-x-2">
-              {members.map((m) => (
+              {memberLabels.map((m) => (
                 <Avatar key={m.id} className="size-7 border-2 border-card">
                   <AvatarFallback className="text-[10px]">
-                    {initials(m.name)}
+                    {initials(m.label)}
                   </AvatarFallback>
                 </Avatar>
               ))}
@@ -99,14 +103,10 @@ export default async function GroupDetailPage({
           <TabsTrigger value="balances">Balances</TabsTrigger>
         </TabsList>
         <TabsContent value="activity" className="mt-4">
-          <ActivityFeed items={activity} />
+          <ActivityFeed items={[]} />
         </TabsContent>
         <TabsContent value="balances" className="mt-4">
-          <BalanceSummary
-            items={balances}
-            currency={group.currency}
-            settleHref={() => `/groups/${groupId}/settle`}
-          />
+          <BalanceSummary items={[]} currency={group.currency} />
         </TabsContent>
       </Tabs>
     </div>

@@ -5,40 +5,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ActivityFeed } from "@/components/activity/activity-feed";
 import { formatCurrency } from "@/lib/format";
-import {
-  CURRENT_USER_ID,
-  EXPENSES,
-  GROUPS,
-  SETTLEMENTS,
-  computeBalances,
-  type ActivityItem,
-} from "@/lib/mock-data";
+import { getCurrentUser } from "@/lib/auth/current-user";
+import { getGroupsForUser } from "@/lib/db/queries/groups";
 
-export default function DashboardPage() {
-  const balances = computeBalances({ forUserId: CURRENT_USER_ID });
-  const owedToYou = balances
-    .filter((b) => b.netCents > 0)
-    .reduce((sum, b) => sum + b.netCents, 0);
-  const youOwe = balances
-    .filter((b) => b.netCents < 0)
-    .reduce((sum, b) => sum + Math.abs(b.netCents), 0);
+export default async function DashboardPage() {
+  const user = await getCurrentUser();
+  const groups = user ? await getGroupsForUser(user.id) : [];
 
-  const recentActivity: ActivityItem[] = [
-    ...EXPENSES.map((expense) => ({
-      kind: "expense" as const,
-      id: expense.id,
-      date: expense.date,
-      expense,
-    })),
-    ...SETTLEMENTS.map((settlement) => ({
-      kind: "settlement" as const,
-      id: settlement.id,
-      date: settlement.date,
-      settlement,
-    })),
-  ]
-    .sort((a, b) => b.date.localeCompare(a.date))
-    .slice(0, 6);
+  // Balances/activity are always zero/empty until the expense system (Phase 2)
+  // is wired up — there's no fabricated data here, just the honest current state.
+  const owedToYou = 0;
+  const youOwe = 0;
 
   return (
     <div className="flex flex-col gap-8">
@@ -105,38 +82,22 @@ export default function DashboardPage() {
             </Link>
           </div>
           <div className="flex flex-col gap-2">
-            {GROUPS.map((group) => {
-              const groupBalances = computeBalances({
-                forUserId: CURRENT_USER_ID,
-                groupId: group.id,
-              });
-              const net = groupBalances.reduce((sum, b) => sum + b.netCents, 0);
-              return (
+            {groups.length === 0 ? (
+              <p className="rounded-lg border border-dashed border-border p-4 text-center text-sm text-muted-foreground">
+                No groups yet.
+              </p>
+            ) : (
+              groups.map((group) => (
                 <Link key={group.id} href={`/groups/${group.id}`}>
                   <Card className="transition-colors hover:bg-accent/50">
                     <CardContent className="flex items-center justify-between py-4">
-                      <div>
-                        <p className="text-sm font-medium">{group.name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {group.memberIds.length} members
-                        </p>
-                      </div>
-                      <span
-                        className={
-                          net === 0
-                            ? "text-xs text-muted-foreground"
-                            : net > 0
-                              ? "text-sm font-medium text-emerald-600 dark:text-emerald-400"
-                              : "text-sm font-medium text-red-600 dark:text-red-400"
-                        }
-                      >
-                        {net === 0 ? "settled" : formatCurrency(net)}
-                      </span>
+                      <p className="text-sm font-medium">{group.name}</p>
+                      <span className="text-xs text-muted-foreground">settled</span>
                     </CardContent>
                   </Card>
                 </Link>
-              );
-            })}
+              ))
+            )}
           </div>
           <Button
             render={<Link href="/groups/new" />}
@@ -151,7 +112,7 @@ export default function DashboardPage() {
 
         <div className="flex flex-col gap-3 lg:col-span-3">
           <h2 className="text-sm font-semibold">Recent activity</h2>
-          <ActivityFeed items={recentActivity} />
+          <ActivityFeed items={[]} />
         </div>
       </div>
     </div>

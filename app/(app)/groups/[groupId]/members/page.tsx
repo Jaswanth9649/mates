@@ -1,12 +1,13 @@
 import { notFound } from "next/navigation";
-import { Plus } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
-import { initials } from "@/lib/format";
-import { CURRENT_USER_ID, getGroup, getGroupMembers } from "@/lib/mock-data";
+import { MembersManager, type MemberRow } from "@/components/groups/members-manager";
+import { getCurrentUser } from "@/lib/auth/current-user";
+import {
+  getGroupById,
+  getGroupMembers,
+  isGroupAdmin,
+  isGroupMember,
+} from "@/lib/db/queries/groups";
 
 export default async function GroupMembersPage({
   params,
@@ -14,48 +15,38 @@ export default async function GroupMembersPage({
   params: Promise<{ groupId: string }>;
 }) {
   const { groupId } = await params;
-  const group = getGroup(groupId);
+
+  const user = await getCurrentUser();
+  if (!user) notFound();
+
+  const group = await getGroupById(groupId);
   if (!group) notFound();
 
-  const members = getGroupMembers(groupId);
+  const isMember = await isGroupMember(groupId, user.id);
+  if (!isMember) notFound();
+
+  const [members, canManage] = await Promise.all([
+    getGroupMembers(groupId),
+    isGroupAdmin(groupId, user.id),
+  ]);
+
+  const rows: MemberRow[] = members.map((m) => ({
+    id: m.id,
+    role: m.role,
+    isYou: m.user?.id === user.id,
+    isPending: !m.user,
+    name: m.user?.displayName ?? m.invitedEmail ?? "Pending invite",
+    email: m.user?.email ?? m.invitedEmail,
+  }));
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Members</h1>
-          <p className="text-sm text-muted-foreground">{group.name}</p>
-        </div>
-        <Button size="sm" disabled>
-          <Plus className="size-4" />
-          Invite
-        </Button>
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight">Members</h1>
+        <p className="text-sm text-muted-foreground">{group.name}</p>
       </div>
 
-      <Card>
-        <CardContent className="divide-y divide-border py-0">
-          {members.map((member) => (
-            <div key={member.id} className="flex items-center gap-3 py-3">
-              <Avatar className="size-9">
-                <AvatarFallback>{initials(member.name)}</AvatarFallback>
-              </Avatar>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium">{member.name}</p>
-                <p className="truncate text-xs text-muted-foreground">
-                  {member.email}
-                </p>
-              </div>
-              {member.id === CURRENT_USER_ID && (
-                <Badge variant="secondary">You</Badge>
-              )}
-            </div>
-          ))}
-        </CardContent>
-      </Card>
-      <p className="text-xs text-muted-foreground">
-        Inviting and removing members will be wired up once accounts (Clerk) are
-        connected.
-      </p>
+      <MembersManager groupId={groupId} members={rows} canManage={canManage} />
     </div>
   );
 }

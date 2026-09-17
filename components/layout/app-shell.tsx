@@ -2,7 +2,8 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { Menu, Plus, LogOut, Settings, User } from "lucide-react";
+import { useClerk } from "@clerk/nextjs";
+import { Menu, Plus, LogOut } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -18,22 +19,32 @@ import {
 import { NavSidebarContent } from "@/components/layout/nav-sidebar";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { initials } from "@/lib/format";
-import { CURRENT_USER_ID, PEOPLE } from "@/lib/mock-data";
 
-export function AppShell({ children }: { children: React.ReactNode }) {
+type ShellUser = { displayName: string; email: string };
+type ShellGroup = { id: string; name: string };
+
+export function AppShell({
+  children,
+  user,
+  groups,
+}: {
+  children: React.ReactNode;
+  user: ShellUser;
+  groups: ShellGroup[];
+}) {
   const [mobileNavOpen, setMobileNavOpen] = React.useState(false);
-  const currentUser = PEOPLE.find((p) => p.id === CURRENT_USER_ID)!;
+  const { signOut } = useClerk();
 
   return (
     <div className="flex min-h-screen">
       <aside className="hidden w-64 shrink-0 border-r border-sidebar-border bg-sidebar px-3 py-4 md:flex">
-        <NavSidebarContent />
+        <NavSidebarContent groups={groups} />
       </aside>
 
       <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
         <SheetContent side="left" className="w-64 bg-sidebar p-3">
           <SheetTitle className="sr-only">Navigation</SheetTitle>
-          <NavSidebarContent />
+          <NavSidebarContent groups={groups} />
         </SheetContent>
       </Sheet>
 
@@ -71,28 +82,19 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             >
               <Avatar className="size-8">
                 <AvatarFallback className="text-xs">
-                  {initials(currentUser.name)}
+                  {initials(user.displayName)}
                 </AvatarFallback>
               </Avatar>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuLabel className="font-normal">
                 <div className="flex flex-col">
-                  <span className="text-sm font-medium">{currentUser.name}</span>
-                  <span className="text-xs text-muted-foreground">
-                    {currentUser.email}
-                  </span>
+                  <span className="text-sm font-medium">{user.displayName}</span>
+                  <span className="text-xs text-muted-foreground">{user.email}</span>
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem disabled>
-                <User className="size-4" /> Profile
-              </DropdownMenuItem>
-              <DropdownMenuItem disabled>
-                <Settings className="size-4" /> Settings
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem disabled>
+              <DropdownMenuItem onClick={() => signOut({ redirectUrl: "/sign-in" })}>
                 <LogOut className="size-4" /> Sign out
               </DropdownMenuItem>
             </DropdownMenuContent>

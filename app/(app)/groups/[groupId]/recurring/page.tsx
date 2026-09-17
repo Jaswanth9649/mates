@@ -3,7 +3,8 @@ import { notFound } from "next/navigation";
 import { Plus, RefreshCw } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { getGroup } from "@/lib/mock-data";
+import { getCurrentUser } from "@/lib/auth/current-user";
+import { getGroupById, isGroupMember } from "@/lib/db/queries/groups";
 
 export default async function RecurringSchedulesPage({
   params,
@@ -11,8 +12,15 @@ export default async function RecurringSchedulesPage({
   params: Promise<{ groupId: string }>;
 }) {
   const { groupId } = await params;
-  const group = getGroup(groupId);
+
+  const user = await getCurrentUser();
+  if (!user) notFound();
+
+  const group = await getGroupById(groupId);
   if (!group) notFound();
+
+  const isMember = await isGroupMember(groupId, user.id);
+  if (!isMember) notFound();
 
   return (
     <div className="flex flex-col gap-6">
@@ -23,11 +31,7 @@ export default async function RecurringSchedulesPage({
           </h1>
           <p className="text-sm text-muted-foreground">{group.name}</p>
         </div>
-        <Button
-          render={<Link href={`/groups/${groupId}/recurring/new`} />}
-          nativeButton={false}
-          size="sm"
-        >
+        <Button render={<Link href={`/groups/${groupId}/recurring/new`} />} nativeButton={false} size="sm">
           <Plus className="size-4" />
           New schedule
         </Button>

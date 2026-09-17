@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 import { LayoutDashboard, Users2, UserRound, Receipt } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import { GROUPS } from "@/lib/mock-data";
 
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -13,7 +12,11 @@ const NAV_ITEMS = [
   { href: "/friends", label: "Friends", icon: UserRound },
 ];
 
-export function NavSidebarContent() {
+export function NavSidebarContent({
+  groups,
+}: {
+  groups: { id: string; name: string }[];
+}) {
   const pathname = usePathname();
 
   return (
@@ -54,7 +57,12 @@ export function NavSidebarContent() {
         <div className="px-3 text-xs font-medium uppercase tracking-wide text-sidebar-foreground/50">
           Your groups
         </div>
-        {GROUPS.map((group) => {
+        {groups.length === 0 && (
+          <p className="px-3 text-xs text-sidebar-foreground/50">
+            No groups yet
+          </p>
+        )}
+        {groups.map((group) => {
           const href = `/groups/${group.id}`;
           const active = pathname.startsWith(href);
           return (

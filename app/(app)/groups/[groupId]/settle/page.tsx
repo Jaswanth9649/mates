@@ -1,7 +1,8 @@
 import { notFound } from "next/navigation";
 
 import { SettleForm } from "@/components/settlements/settle-form";
-import { CURRENT_USER_ID, computeBalances, getGroup } from "@/lib/mock-data";
+import { getCurrentUser } from "@/lib/auth/current-user";
+import { getGroupById, isGroupMember } from "@/lib/db/queries/groups";
 
 export default async function SettlePage({
   params,
@@ -9,15 +10,20 @@ export default async function SettlePage({
   params: Promise<{ groupId: string }>;
 }) {
   const { groupId } = await params;
-  const group = getGroup(groupId);
+
+  const user = await getCurrentUser();
+  if (!user) notFound();
+
+  const group = await getGroupById(groupId);
   if (!group) notFound();
 
-  const balances = computeBalances({ forUserId: CURRENT_USER_ID, groupId });
+  const isMember = await isGroupMember(groupId, user.id);
+  if (!isMember) notFound();
 
   return (
     <div className="mx-auto max-w-lg">
       <h1 className="mb-6 text-2xl font-semibold tracking-tight">Settle up</h1>
-      <SettleForm groupId={groupId} balances={balances} currency={group.currency} />
+      <SettleForm groupId={groupId} balances={[]} currency={group.currency} />
     </div>
   );
 }

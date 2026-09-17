@@ -1,7 +1,8 @@
 import { notFound } from "next/navigation";
 
 import { RecurringForm } from "@/components/recurring/recurring-form";
-import { CURRENT_USER_ID, getGroup, getGroupMembers } from "@/lib/mock-data";
+import { getCurrentUser } from "@/lib/auth/current-user";
+import { getGroupById, getGroupMembers, isGroupMember } from "@/lib/db/queries/groups";
 
 export default async function NewRecurringPage({
   params,
@@ -9,10 +10,20 @@ export default async function NewRecurringPage({
   params: Promise<{ groupId: string }>;
 }) {
   const { groupId } = await params;
-  const group = getGroup(groupId);
+
+  const user = await getCurrentUser();
+  if (!user) notFound();
+
+  const group = await getGroupById(groupId);
   if (!group) notFound();
 
-  const members = getGroupMembers(groupId);
+  const isMember = await isGroupMember(groupId, user.id);
+  if (!isMember) notFound();
+
+  const groupMembers = await getGroupMembers(groupId);
+  const members = groupMembers
+    .filter((m) => m.user)
+    .map((m) => ({ id: m.user!.id, name: m.user!.displayName, email: m.user!.email }));
 
   return (
     <div className="mx-auto max-w-lg">
@@ -23,7 +34,7 @@ export default async function NewRecurringPage({
         groupId={groupId}
         members={members}
         currency={group.currency}
-        defaultPaidBy={CURRENT_USER_ID}
+        defaultPaidBy={user.id}
       />
     </div>
   );

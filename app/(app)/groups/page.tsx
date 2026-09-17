@@ -3,16 +3,13 @@ import { Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { formatCurrency, initials } from "@/lib/format";
-import {
-  CURRENT_USER_ID,
-  GROUPS,
-  computeBalances,
-  getGroupMembers,
-} from "@/lib/mock-data";
+import { getCurrentUser } from "@/lib/auth/current-user";
+import { getGroupsForUser } from "@/lib/db/queries/groups";
 
-export default function GroupsPage() {
+export default async function GroupsPage() {
+  const user = await getCurrentUser();
+  const groups = user ? await getGroupsForUser(user.id) : [];
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
@@ -28,7 +25,7 @@ export default function GroupsPage() {
         </Button>
       </div>
 
-      {GROUPS.length === 0 ? (
+      {groups.length === 0 ? (
         <div className="rounded-lg border border-dashed border-border p-10 text-center">
           <p className="text-sm text-muted-foreground">
             You&apos;re not in any groups yet.
@@ -44,53 +41,16 @@ export default function GroupsPage() {
         </div>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2">
-          {GROUPS.map((group) => {
-            const members = getGroupMembers(group.id);
-            const net = computeBalances({
-              forUserId: CURRENT_USER_ID,
-              groupId: group.id,
-            }).reduce((sum, b) => sum + b.netCents, 0);
-
-            return (
-              <Link key={group.id} href={`/groups/${group.id}`}>
-                <Card className="h-full transition-colors hover:bg-accent/50">
-                  <CardContent className="flex flex-col gap-4 py-5">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <p className="font-medium">{group.name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {members.length} members
-                        </p>
-                      </div>
-                      <span
-                        className={
-                          net === 0
-                            ? "text-xs text-muted-foreground"
-                            : net > 0
-                              ? "text-sm font-medium text-emerald-600 dark:text-emerald-400"
-                              : "text-sm font-medium text-red-600 dark:text-red-400"
-                        }
-                      >
-                        {net === 0 ? "settled up" : formatCurrency(net)}
-                      </span>
-                    </div>
-                    <div className="flex -space-x-2">
-                      {members.map((m) => (
-                        <Avatar
-                          key={m.id}
-                          className="size-7 border-2 border-card"
-                        >
-                          <AvatarFallback className="text-[10px]">
-                            {initials(m.name)}
-                          </AvatarFallback>
-                        </Avatar>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              </Link>
-            );
-          })}
+          {groups.map((group) => (
+            <Link key={group.id} href={`/groups/${group.id}`}>
+              <Card className="h-full transition-colors hover:bg-accent/50">
+                <CardContent className="flex items-center justify-between py-5">
+                  <p className="font-medium">{group.name}</p>
+                  <span className="text-xs text-muted-foreground">settled up</span>
+                </CardContent>
+              </Card>
+            </Link>
+          ))}
         </div>
       )}
     </div>

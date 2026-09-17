@@ -16,6 +16,7 @@ export default function NewGroupPage() {
   const [name, setName] = React.useState("");
   const [emailInput, setEmailInput] = React.useState("");
   const [invitees, setInvitees] = React.useState<string[]>([]);
+  const [submitting, setSubmitting] = React.useState(false);
 
   const addInvitee = () => {
     const email = emailInput.trim();
@@ -25,11 +26,34 @@ export default function NewGroupPage() {
     setEmailInput("");
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: POST /api/groups once the database layer is wired up.
-    toast.success(`"${name || "Untitled group"}" created (mock)`);
-    router.push("/groups");
+    setSubmitting(true);
+    try {
+      const res = await fetch("/api/groups", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, currency: "USD" }),
+      });
+      if (!res.ok) throw new Error("Failed to create group");
+      const { group } = await res.json();
+
+      for (const email of invitees) {
+        await fetch(`/api/groups/${group.id}/members`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email }),
+        }).catch(() => null);
+      }
+
+      toast.success(`"${group.name}" created`);
+      router.push(`/groups/${group.id}`);
+      router.refresh();
+    } catch {
+      toast.error("Couldn't create the group — try again");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -105,8 +129,8 @@ export default function NewGroupPage() {
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={!name.trim()}>
-                Create group
+              <Button type="submit" disabled={!name.trim() || submitting}>
+                {submitting ? "Creating…" : "Create group"}
               </Button>
             </div>
           </form>
