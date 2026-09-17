@@ -1,17 +1,18 @@
-import Link from "next/link";
+"use client";
+
+import { SignIn } from "@clerk/nextjs";
+import { dark } from "@clerk/themes";
+import { useTheme } from "next-themes";
 import { Receipt } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+const EMERALD = "#10b981";
 
-// TODO(auth): swap this placeholder for Clerk's <SignIn /> once the Clerk
-// Marketplace integration is provisioned (Phase 0).
 export default function SignInPage() {
+  const { resolvedTheme } = useTheme();
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted/30 px-4">
-      <div className="flex w-full max-w-sm flex-col gap-6">
+      <div className="flex w-full max-w-sm flex-col items-center gap-6">
         <div className="flex flex-col items-center gap-2">
           <div className="flex size-9 items-center justify-center rounded-md bg-gradient-to-br from-emerald-500 to-teal-500 text-white shadow-sm">
             <Receipt className="size-5" />
@@ -24,35 +25,15 @@ export default function SignInPage() {
           </h1>
         </div>
 
-        <Card>
-          <CardHeader className="pb-0" />
-          <CardContent className="pt-4">
-            <form className="flex flex-col gap-4">
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" placeholder="you@example.com" />
-              </div>
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="password">Password</Label>
-                <Input id="password" type="password" placeholder="••••••••" />
-              </div>
-              <Button type="submit" className="mt-1" disabled>
-                Sign in
-              </Button>
-              <p className="text-center text-xs text-muted-foreground">
-                Authentication isn&apos;t wired up yet — this screen is a visual
-                placeholder for Clerk.
-              </p>
-            </form>
-          </CardContent>
-        </Card>
-
-        <p className="text-center text-sm text-muted-foreground">
-          Don&apos;t have an account?{" "}
-          <Link href="/sign-up" className="font-medium text-foreground underline">
-            Sign up
-          </Link>
-        </p>
+        <SignIn
+          appearance={{
+            theme: resolvedTheme === "dark" ? dark : undefined,
+            variables: {
+              colorPrimary: EMERALD,
+              borderRadius: "0.625rem",
+            },
+          }}
+        />
       </div>
     </div>
   );
