@@ -17,6 +17,16 @@ export function formatDate(date: string | Date) {
   }).format(d);
 }
 
+export function formatDateTime(date: string | Date) {
+  const d = typeof date === "string" ? new Date(date) : date;
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(d);
+}
+
 export function initials(name: string) {
   return name
     .split(" ")

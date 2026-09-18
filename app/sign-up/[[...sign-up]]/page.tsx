@@ -35,6 +35,14 @@ export default function SignUpPage() {
             },
           }}
         />
+
+        {/* See the matching comment on the sign-in page: dev-instance Clerk
+            + no custom domain yet means this cross-domain cookie can get
+            blocked by browser privacy settings. */}
+        <p className="max-w-xs text-center text-xs text-muted-foreground">
+          Stuck signing up? Try allowing third-party cookies for this site, or
+          use a browser like Chrome with default privacy settings.
+        </p>
       </div>
     </div>
   );

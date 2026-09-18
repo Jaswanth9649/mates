@@ -34,6 +34,16 @@ export default function SignInPage() {
             },
           }}
         />
+
+        {/* This project is still on a Clerk development instance (no custom
+            domain yet), which relies on a cross-domain cookie that Safari,
+            Firefox, and some Chrome privacy settings block by default. If
+            sign-in seems to hang or bounce back here, this is almost always
+            why — see the comment above for the real fix. */}
+        <p className="max-w-xs text-center text-xs text-muted-foreground">
+          Stuck signing in? Try allowing third-party cookies for this site, or
+          use a browser like Chrome with default privacy settings.
+        </p>
       </div>
     </div>
   );

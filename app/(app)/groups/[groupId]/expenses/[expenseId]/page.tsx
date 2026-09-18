@@ -7,10 +7,12 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DeleteExpenseButton } from "@/components/expenses/delete-expense-button";
+import { ExpenseComments } from "@/components/expenses/expense-comments";
 import { formatCurrency, formatDate, initials } from "@/lib/format";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { isGroupMember } from "@/lib/db/queries/groups";
 import { getExpenseWithSplits } from "@/lib/db/queries/expenses";
+import { getExpenseComments } from "@/lib/db/queries/comments";
 import { getDb } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 
@@ -31,6 +33,7 @@ export default async function ExpenseDetailPage({
   if (!isMember) notFound();
 
   const { expense, splits } = result;
+  const comments = await getExpenseComments(expenseId);
 
   const db = getDb();
   const userIds = [expense.paidBy, ...splits.map((s) => s.userId)];
@@ -93,6 +96,19 @@ export default async function ExpenseDetailPage({
               </span>
             </div>
           ))}
+        </CardContent>
+      </Card>
+
+      <Card className="mt-4">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-medium text-muted-foreground">Comments</CardTitle>
+        </CardHeader>
+        <CardContent className="pt-0">
+          <ExpenseComments
+            expenseId={expenseId}
+            currentUserId={user.id}
+            initialComments={comments}
+          />
         </CardContent>
       </Card>
     </div>

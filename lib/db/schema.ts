@@ -180,3 +180,18 @@ export const recurringExpenseSplits = pgTable("recurring_expense_splits", {
 
 export type RecurringExpenseSplit = typeof recurringExpenseSplits.$inferSelect;
 export type NewRecurringExpenseSplit = typeof recurringExpenseSplits.$inferInsert;
+
+export const expenseComments = pgTable("expense_comments", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  expenseId: uuid("expense_id")
+    .notNull()
+    .references(() => expenses.id, { onDelete: "cascade" }),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id),
+  body: text("body").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type ExpenseComment = typeof expenseComments.$inferSelect;
+export type NewExpenseComment = typeof expenseComments.$inferInsert;
