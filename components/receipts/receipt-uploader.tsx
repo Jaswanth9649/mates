@@ -12,9 +12,13 @@ import type { Person } from "@/lib/mock-data";
 export function ReceiptUploader({
   groupId,
   members,
+  currency = "USD",
+  defaultPaidBy,
 }: {
   groupId: string;
   members: Person[];
+  currency?: string;
+  defaultPaidBy: string;
 }) {
   const [status, setStatus] = React.useState<"idle" | "processing" | "review">(
     "idle"
@@ -32,6 +36,8 @@ export function ReceiptUploader({
       <ReceiptReview
         groupId={groupId}
         members={members}
+        currency={currency}
+        defaultPaidBy={defaultPaidBy}
         merchantName={RECEIPT_MOCK.merchantName}
         totalAmountCents={RECEIPT_MOCK.totalAmountCents}
         overallConfidence={RECEIPT_MOCK.confidence}

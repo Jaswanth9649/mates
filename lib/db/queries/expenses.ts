@@ -16,7 +16,7 @@ export type ExpenseInput = {
   currency: string;
   category?: string;
   expenseDate: string;
-  splitType: "equal" | "exact" | "percentage";
+  splitType: "equal" | "exact" | "percentage" | "line_item";
   splits: ExpenseSplitInput[];
   createdBy: string;
 };

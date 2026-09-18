@@ -44,17 +44,46 @@ export function RecurringForm({
     () => new Date().toISOString().slice(0, 10)
   );
   const [splitValue, setSplitValue] = React.useState<SplitEditorValue | null>(null);
+  const [submitting, setSubmitting] = React.useState(false);
 
   const totalCents = dollarsToCents(amount || "0");
   const canSubmit =
     description.trim().length > 0 && totalCents > 0 && !!splitValue?.valid;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!canSubmit) return;
-    // TODO: POST /api/recurring once lib/recurring/next-run.ts + the cron route exist.
-    toast.success(`"${description}" will repeat ${frequency} (mock)`);
-    router.push(`/groups/${groupId}/recurring`);
+    if (!canSubmit || !splitValue || submitting) return;
+    setSubmitting(true);
+
+    try {
+      const res = await fetch("/api/recurring", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          groupId,
+          description,
+          amountCents: totalCents,
+          currency,
+          paidBy,
+          splitType: splitValue.splitType,
+          frequency,
+          startDate,
+          splits: splitValue.splits,
+        }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw new Error(body?.error ? JSON.stringify(body.error) : "Request failed");
+      }
+
+      toast.success(`"${description}" will repeat ${frequency}`);
+      router.push(`/groups/${groupId}/recurring`);
+      router.refresh();
+    } catch {
+      toast.error("Couldn't create that schedule — try again");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -169,8 +198,8 @@ export function RecurringForm({
         >
           Cancel
         </Button>
-        <Button type="submit" disabled={!canSubmit}>
-          Create schedule
+        <Button type="submit" disabled={!canSubmit || submitting}>
+          {submitting ? "Creating…" : "Create schedule"}
         </Button>
       </div>
     </form>

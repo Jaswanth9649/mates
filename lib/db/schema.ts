@@ -132,3 +132,51 @@ export const settlements = pgTable("settlements", {
 
 export type Settlement = typeof settlements.$inferSelect;
 export type NewSettlement = typeof settlements.$inferInsert;
+
+export const recurringFrequencyEnum = pgEnum("recurring_frequency", [
+  "weekly",
+  "monthly",
+]);
+
+export const recurringExpenses = pgTable("recurring_expenses", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  groupId: uuid("group_id")
+    .notNull()
+    .references(() => groups.id, { onDelete: "cascade" }),
+  paidBy: uuid("paid_by")
+    .notNull()
+    .references(() => users.id),
+  description: text("description").notNull(),
+  amountCents: integer("amount_cents").notNull(),
+  currency: text("currency").notNull().default("USD"),
+  category: text("category"),
+  splitType: splitTypeEnum("split_type").notNull(),
+  frequency: recurringFrequencyEnum("frequency").notNull(),
+  // The next calendar date this schedule is due to materialize into a real
+  // expense. Advanced by lib/recurring/next-run.ts each time the cron route
+  // processes it; starts equal to the schedule's start date.
+  nextRunDate: date("next_run_date").notNull(),
+  isActive: boolean("is_active").notNull().default(true),
+  createdBy: uuid("created_by")
+    .notNull()
+    .references(() => users.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type RecurringExpense = typeof recurringExpenses.$inferSelect;
+export type NewRecurringExpense = typeof recurringExpenses.$inferInsert;
+
+export const recurringExpenseSplits = pgTable("recurring_expense_splits", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  recurringExpenseId: uuid("recurring_expense_id")
+    .notNull()
+    .references(() => recurringExpenses.id, { onDelete: "cascade" }),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id),
+  owedAmountCents: integer("owed_amount_cents").notNull(),
+});
+
+export type RecurringExpenseSplit = typeof recurringExpenseSplits.$inferSelect;
+export type NewRecurringExpenseSplit = typeof recurringExpenseSplits.$inferInsert;

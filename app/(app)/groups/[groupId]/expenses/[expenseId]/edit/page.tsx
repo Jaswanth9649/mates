@@ -44,7 +44,13 @@ export default async function EditExpensePage({
           category: result.expense.category ?? "General",
           expenseDate: result.expense.expenseDate,
           paidBy: result.expense.paidBy,
-          splitType: result.expense.splitType as "equal" | "exact" | "percentage",
+          // A receipt-scanned expense is "line_item" server-side, but only the
+          // per-person totals are persisted (no line-item text), so editing it
+          // is functionally identical to editing exact amounts.
+          splitType:
+            result.expense.splitType === "line_item"
+              ? "exact"
+              : (result.expense.splitType as "equal" | "exact" | "percentage"),
           splits: result.splits.map((s) => ({
             userId: s.userId,
             amountCents: s.owedAmountCents,

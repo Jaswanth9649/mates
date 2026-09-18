@@ -30,7 +30,12 @@ export default async function NewReceiptPage({
       <h1 className="mb-6 text-2xl font-semibold tracking-tight">
         Scan receipt
       </h1>
-      <ReceiptUploader groupId={groupId} members={members} />
+      <ReceiptUploader
+        groupId={groupId}
+        members={members}
+        currency={group.currency}
+        defaultPaidBy={user.id}
+      />
     </div>
   );
 }

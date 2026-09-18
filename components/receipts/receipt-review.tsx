@@ -7,6 +7,14 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
@@ -26,6 +34,8 @@ const LOW_CONFIDENCE_THRESHOLD = 0.7;
 export function ReceiptReview({
   groupId,
   members,
+  currency = "USD",
+  defaultPaidBy,
   merchantName,
   totalAmountCents,
   overallConfidence,
@@ -33,6 +43,8 @@ export function ReceiptReview({
 }: {
   groupId: string;
   members: Person[];
+  currency?: string;
+  defaultPaidBy: string;
   merchantName: string;
   totalAmountCents: number;
   overallConfidence: number;
@@ -40,6 +52,8 @@ export function ReceiptReview({
 }) {
   const router = useRouter();
   const [lineItems, setLineItems] = React.useState(initialLineItems);
+  const [paidBy, setPaidBy] = React.useState(defaultPaidBy);
+  const [submitting, setSubmitting] = React.useState(false);
   const [assignments, setAssignments] = React.useState<Record<string, Set<string>>>(
     () =>
       Object.fromEntries(
@@ -85,10 +99,43 @@ export function ReceiptReview({
     (item) => (assignments[item.id]?.size ?? 0) === 0
   );
 
-  const handleCreateExpense = () => {
-    // TODO: POST /api/expenses with split_type "line_item" once backend is wired up.
-    toast.success(`Expense created from ${merchantName} receipt (mock)`);
-    router.push(`/groups/${groupId}`);
+  const handleCreateExpense = async () => {
+    if (hasUnassignedItem || submitting) return;
+    setSubmitting(true);
+
+    const splits = members.map((member) => ({
+      userId: member.id,
+      amountCents: perMemberTotals.get(member.id) ?? 0,
+    }));
+
+    try {
+      const res = await fetch("/api/expenses", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          groupId,
+          description: merchantName,
+          amountCents: extractedTotal,
+          currency,
+          expenseDate: new Date().toISOString().slice(0, 10),
+          paidBy,
+          splitType: "line_item",
+          splits,
+        }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw new Error(body?.error ? JSON.stringify(body.error) : "Request failed");
+      }
+
+      toast.success(`Expense created from ${merchantName} receipt`);
+      router.push(`/groups/${groupId}`);
+      router.refresh();
+    } catch {
+      toast.error("Couldn't create that expense — try again");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -226,6 +273,24 @@ export function ReceiptReview({
               ))}
             </CardContent>
           </Card>
+
+          <div className="flex items-center justify-between gap-3">
+            <Label htmlFor="receipt-paid-by" className="text-sm text-muted-foreground">
+              Paid by
+            </Label>
+            <Select value={paidBy} onValueChange={(value) => setPaidBy(value ?? paidBy)}>
+              <SelectTrigger id="receipt-paid-by" className="w-[180px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {members.map((member) => (
+                  <SelectItem key={member.id} value={member.id}>
+                    {member.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       </div>
 
@@ -237,8 +302,8 @@ export function ReceiptReview({
         >
           Skip OCR, enter manually
         </Button>
-        <Button onClick={handleCreateExpense} disabled={hasUnassignedItem}>
-          Create expense
+        <Button onClick={handleCreateExpense} disabled={hasUnassignedItem || submitting}>
+          {submitting ? "Creating…" : "Create expense"}
         </Button>
       </div>
     </div>
