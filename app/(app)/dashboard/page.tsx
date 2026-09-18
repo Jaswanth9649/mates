@@ -4,18 +4,39 @@ import { ArrowRight, TrendingDown, TrendingUp, Wallet } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ActivityFeed } from "@/components/activity/activity-feed";
+import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/format";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { getGroupsForUser } from "@/lib/db/queries/groups";
+import { computeAllBalancesForUser, getGroupNetBalances } from "@/lib/db/queries/balances";
+import { getRecentActivityForUser } from "@/lib/db/queries/dashboard";
 
 export default async function DashboardPage() {
   const user = await getCurrentUser();
   const groups = user ? await getGroupsForUser(user.id) : [];
+  const groupIds = groups.map((g) => g.id);
+  const [balances, activity, netByGroupId] = user
+    ? await Promise.all([
+        computeAllBalancesForUser(user.id),
+        getRecentActivityForUser(user.id, groupIds, 8),
+        getGroupNetBalances(groupIds, user.id),
+      ])
+    : [[], [], new Map<string, number>()];
 
-  // Balances/activity are always zero/empty until the expense system (Phase 2)
-  // is wired up — there's no fabricated data here, just the honest current state.
-  const owedToYou = 0;
-  const youOwe = 0;
+  // The three stat cards show the user's default currency only — mixing
+  // currencies into one number would be meaningless. Any balance in a
+  // different currency still shows up in full on the Friends page.
+  const primaryCurrency = user?.defaultCurrency ?? "USD";
+  const primaryBalances = balances.filter((b) => b.currency === primaryCurrency);
+  const owedToYou = primaryBalances
+    .filter((b) => b.netCents > 0)
+    .reduce((sum, b) => sum + b.netCents, 0);
+  const youOwe = primaryBalances
+    .filter((b) => b.netCents < 0)
+    .reduce((sum, b) => sum + Math.abs(b.netCents), 0);
+  const otherCurrencies = Array.from(
+    new Set(balances.filter((b) => b.currency !== primaryCurrency).map((b) => b.currency))
+  );
 
   return (
     <div className="flex flex-col gap-8">
@@ -36,7 +57,7 @@ export default async function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-semibold text-emerald-600 dark:text-emerald-400">
-              {formatCurrency(owedToYou)}
+              {formatCurrency(owedToYou, primaryCurrency)}
             </div>
           </CardContent>
         </Card>
@@ -50,7 +71,7 @@ export default async function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-semibold text-red-600 dark:text-red-400">
-              {formatCurrency(youOwe)}
+              {formatCurrency(youOwe, primaryCurrency)}
             </div>
           </CardContent>
         </Card>
@@ -64,11 +85,21 @@ export default async function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-semibold">
-              {formatCurrency(owedToYou - youOwe)}
+              {formatCurrency(owedToYou - youOwe, primaryCurrency)}
             </div>
           </CardContent>
         </Card>
       </div>
+
+      {otherCurrencies.length > 0 && (
+        <p className="-mt-4 text-xs text-muted-foreground">
+          You also have balances in {otherCurrencies.join(", ")} —{" "}
+          <Link href="/friends" className="underline hover:text-foreground">
+            see the full breakdown
+          </Link>
+          .
+        </p>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-5">
         <div className="flex flex-col gap-3 lg:col-span-2">
@@ -87,16 +118,34 @@ export default async function DashboardPage() {
                 No groups yet.
               </p>
             ) : (
-              groups.map((group) => (
-                <Link key={group.id} href={`/groups/${group.id}`}>
-                  <Card className="transition-colors hover:bg-accent/50">
-                    <CardContent className="flex items-center justify-between py-4">
-                      <p className="text-sm font-medium">{group.name}</p>
-                      <span className="text-xs text-muted-foreground">settled</span>
-                    </CardContent>
-                  </Card>
-                </Link>
-              ))
+              groups.map((group) => {
+                const net = netByGroupId.get(group.id) ?? 0;
+                const label =
+                  net === 0
+                    ? "settled"
+                    : net > 0
+                      ? `owed ${formatCurrency(net, group.currency)}`
+                      : `you owe ${formatCurrency(Math.abs(net), group.currency)}`;
+                return (
+                  <Link key={group.id} href={`/groups/${group.id}`}>
+                    <Card className="transition-colors hover:bg-accent/50">
+                      <CardContent className="flex items-center justify-between py-4">
+                        <p className="text-sm font-medium">{group.name}</p>
+                        <span
+                          className={cn(
+                            "text-xs",
+                            net > 0 && "text-emerald-600 dark:text-emerald-400",
+                            net < 0 && "text-red-600 dark:text-red-400",
+                            net === 0 && "text-muted-foreground"
+                          )}
+                        >
+                          {label}
+                        </span>
+                      </CardContent>
+                    </Card>
+                  </Link>
+                );
+              })
             )}
           </div>
           <Button
@@ -112,7 +161,7 @@ export default async function DashboardPage() {
 
         <div className="flex flex-col gap-3 lg:col-span-3">
           <h2 className="text-sm font-semibold">Recent activity</h2>
-          <ActivityFeed items={[]} />
+          <ActivityFeed items={activity} />
         </div>
       </div>
     </div>

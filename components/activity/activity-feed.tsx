@@ -6,9 +6,16 @@ import { Badge } from "@/components/ui/badge";
 import { formatCurrency, formatDate, initials } from "@/lib/format";
 import type { ActivityItem } from "@/lib/activity";
 
+function defaultHref(item: ActivityItem): string | undefined {
+  if (!item.groupId) return undefined;
+  return item.kind === "expense"
+    ? `/groups/${item.groupId}/expenses/${item.id}`
+    : `/groups/${item.groupId}`;
+}
+
 export function ActivityFeed({
   items,
-  getHref,
+  getHref = defaultHref,
 }: {
   items: ActivityItem[];
   getHref?: (item: ActivityItem) => string | undefined;
@@ -47,6 +54,7 @@ export function ActivityFeed({
                     {item.paidByName} paid {formatCurrency(item.amountCents, item.currency)}
                     {" · "}
                     {formatDate(item.date)}
+                    {item.groupName && ` · ${item.groupName}`}
                   </p>
                 </>
               ) : (
@@ -58,6 +66,7 @@ export function ActivityFeed({
                     Settlement{item.note ? ` · ${item.note}` : ""}
                     {" · "}
                     {formatDate(item.date)}
+                    {item.groupName && ` · ${item.groupName}`}
                   </p>
                 </>
               )}

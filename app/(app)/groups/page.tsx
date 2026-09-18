@@ -3,12 +3,18 @@ import { Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
+import { formatCurrency } from "@/lib/format";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { getGroupsForUser } from "@/lib/db/queries/groups";
+import { getGroupNetBalances } from "@/lib/db/queries/balances";
 
 export default async function GroupsPage() {
   const user = await getCurrentUser();
   const groups = user ? await getGroupsForUser(user.id) : [];
+  const netByGroupId = user
+    ? await getGroupNetBalances(groups.map((g) => g.id), user.id)
+    : new Map<string, number>();
 
   return (
     <div className="flex flex-col gap-6">
@@ -41,16 +47,34 @@ export default async function GroupsPage() {
         </div>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2">
-          {groups.map((group) => (
-            <Link key={group.id} href={`/groups/${group.id}`}>
-              <Card className="h-full transition-colors hover:bg-accent/50">
-                <CardContent className="flex items-center justify-between py-5">
-                  <p className="font-medium">{group.name}</p>
-                  <span className="text-xs text-muted-foreground">settled up</span>
-                </CardContent>
-              </Card>
-            </Link>
-          ))}
+          {groups.map((group) => {
+            const net = netByGroupId.get(group.id) ?? 0;
+            const label =
+              net === 0
+                ? "settled up"
+                : net > 0
+                  ? `owed ${formatCurrency(net, group.currency)}`
+                  : `you owe ${formatCurrency(Math.abs(net), group.currency)}`;
+            return (
+              <Link key={group.id} href={`/groups/${group.id}`}>
+                <Card className="h-full transition-colors hover:bg-accent/50">
+                  <CardContent className="flex items-center justify-between py-5">
+                    <p className="font-medium">{group.name}</p>
+                    <span
+                      className={cn(
+                        "text-xs",
+                        net > 0 && "text-emerald-600 dark:text-emerald-400",
+                        net < 0 && "text-red-600 dark:text-red-400",
+                        net === 0 && "text-muted-foreground"
+                      )}
+                    >
+                      {label}
+                    </span>
+                  </CardContent>
+                </Card>
+              </Link>
+            );
+          })}
         </div>
       )}
     </div>

@@ -125,7 +125,6 @@ export default async function GroupDetailPage({
         <TabsContent value="balances" className="mt-4">
           <BalanceSummary
             items={balances}
-            currency={group.currency}
             settleHref={() => `/groups/${groupId}/settle`}
           />
         </TabsContent>

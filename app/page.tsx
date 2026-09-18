@@ -1,7 +1,8 @@
 import { redirect } from "next/navigation";
 
-// TODO(auth): once Clerk is wired up, redirect signed-out visitors to a
-// marketing/sign-in page instead of straight into the app.
+// Always redirect to /dashboard: signed-in visitors land on their dashboard,
+// and signed-out visitors get bounced to /sign-in by the (app) layout's auth
+// check, so there's no separate marketing page to detour through.
 export default function Home() {
   redirect("/dashboard");
 }
