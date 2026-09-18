@@ -5,6 +5,8 @@ import { dark } from "@clerk/themes";
 import { useTheme } from "next-themes";
 import { Receipt } from "lucide-react";
 
+import { AuthWidgetStallGuard } from "@/components/auth/auth-widget-stall-guard";
+
 const EMERALD = "#10b981";
 
 export default function SignInPage() {
@@ -25,25 +27,17 @@ export default function SignInPage() {
           </h1>
         </div>
 
-        <SignIn
-          appearance={{
-            theme: resolvedTheme === "dark" ? dark : undefined,
-            variables: {
-              colorPrimary: EMERALD,
-              borderRadius: "0.625rem",
-            },
-          }}
-        />
-
-        {/* This project is still on a Clerk development instance (no custom
-            domain yet), which relies on a cross-domain cookie that Safari,
-            Firefox, and some Chrome privacy settings block by default. If
-            sign-in seems to hang or bounce back here, this is almost always
-            why — see the comment above for the real fix. */}
-        <p className="max-w-xs text-center text-xs text-muted-foreground">
-          Stuck signing in? Try allowing third-party cookies for this site, or
-          use a browser like Chrome with default privacy settings.
-        </p>
+        <AuthWidgetStallGuard>
+          <SignIn
+            appearance={{
+              theme: resolvedTheme === "dark" ? dark : undefined,
+              variables: {
+                colorPrimary: EMERALD,
+                borderRadius: "0.625rem",
+              },
+            }}
+          />
+        </AuthWidgetStallGuard>
       </div>
     </div>
   );

@@ -5,6 +5,8 @@ import { dark } from "@clerk/themes";
 import { useTheme } from "next-themes";
 import { Receipt } from "lucide-react";
 
+import { AuthWidgetStallGuard } from "@/components/auth/auth-widget-stall-guard";
+
 const EMERALD = "#10b981";
 
 export default function SignUpPage() {
@@ -26,23 +28,17 @@ export default function SignUpPage() {
           </h1>
         </div>
 
-        <SignUp
-          appearance={{
-            theme: resolvedTheme === "dark" ? dark : undefined,
-            variables: {
-              colorPrimary: EMERALD,
-              borderRadius: "0.625rem",
-            },
-          }}
-        />
-
-        {/* See the matching comment on the sign-in page: dev-instance Clerk
-            + no custom domain yet means this cross-domain cookie can get
-            blocked by browser privacy settings. */}
-        <p className="max-w-xs text-center text-xs text-muted-foreground">
-          Stuck signing up? Try allowing third-party cookies for this site, or
-          use a browser like Chrome with default privacy settings.
-        </p>
+        <AuthWidgetStallGuard>
+          <SignUp
+            appearance={{
+              theme: resolvedTheme === "dark" ? dark : undefined,
+              variables: {
+                colorPrimary: EMERALD,
+                borderRadius: "0.625rem",
+              },
+            }}
+          />
+        </AuthWidgetStallGuard>
       </div>
     </div>
   );
