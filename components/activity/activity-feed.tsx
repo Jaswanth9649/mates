@@ -78,8 +78,13 @@ export function ActivityFeed({
               </span>
               {item.kind === "expense" && item.yourShareCents !== undefined && (
                 <Badge variant="outline" className="text-[10px] font-normal">
-                  {item.isPayer ? "you lent" : "your share"}{" "}
-                  {formatCurrency(item.yourShareCents, item.currency)}
+                  {item.isPayer ? (
+                    <>
+                      you lent {formatCurrency(item.amountCents - item.yourShareCents, item.currency)}
+                    </>
+                  ) : (
+                    <>your share {formatCurrency(item.yourShareCents, item.currency)}</>
+                  )}
                 </Badge>
               )}
             </div>
