@@ -160,4 +160,4 @@ All amounts are stored as **integer cents** to avoid floating-point errors. Spli
 
 ## License
 
-No license has been specified yet. Add a `LICENSE` file to state how others may use this code.
+Released under the [MIT License](LICENSE).
